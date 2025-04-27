@@ -5,18 +5,37 @@ from dotenv import load_dotenv
 
 app = Flask(__name__)
 
-# Load environment variables
-load_dotenv()
+# Safe API key loading
+gemini_key = os.getenv("GEMINI_API_KEY")
+if not gemini_key:
+    raise ValueError("No GEMINI_API_KEY found in environment variables")
 
-# Configure Gemini
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))  # Add this to Render's environment vars
-model = genai.GenerativeModel('gemini-pro')
+# Configure with explicit settings
+genai.configure(
+    api_key=gemini_key,
+    transport="rest",  # Avoids gRPC issues
+    client_options={
+        "api_endpoint": "generativelanguage.googleapis.com"
+    }
+)
 
 
-@app.route("/")
-def home():
-    return render_template("index.html")
+@app.route("/chat", methods=["POST"])
+def chat():
+    # Add CORS headers if needed
+    headers = {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+    }
 
+    try:
+        response = model.generate_content(
+            request.json["message"],
+            generation_config={"max_output_tokens": 150}
+        )
+        return jsonify({"reply": response.text}), 200, headers
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500, headers
 
 @app.route("/chat", methods=["POST"])
 def chat():
