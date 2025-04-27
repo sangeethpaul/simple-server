@@ -2,49 +2,69 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Simple Chatbot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat with AI</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    #chatbox { width: 100%; height: 400px; border: 1px solid #ccc; overflow-y: auto; padding: 10px; margin-bottom: 10px; }
-    #userinput { width: 80%; padding: 10px; }
-    #sendbtn { padding: 10px; }
-    .user { color: blue; }
-    .bot { color: green; }
+    /* Basic Styling */
+    #chat-box {
+      width: 300px;
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+    }
+    #user-input {
+      width: 250px;
+      padding: 10px;
+    }
+    #chat-box div {
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
+  <h1>AI Chat</h1>
 
-<h2>Chat with AI</h2>
-<div id="chatbox"></div>
-<input type="text" id="userinput" placeholder="Type your message...">
-<button id="sendbtn">Send</button>
+  <div id="chat-box">
+    <!-- Chat messages will appear here -->
+  </div>
 
-<script>
-const chatbox = document.getElementById('chatbox');
-const userinput = document.getElementById('userinput');
-const sendbtn = document.getElementById('sendbtn');
+  <input type="text" id="user-input" placeholder="Ask a question..." />
+  <button onclick="sendMessage()">Send</button>
 
-// Replace this URL with your actual Render URL
-const backendUrl = 'https://simple-server-9udz.onrender.com/chat';
+  <script>
+    function appendMessage(content, from) {
+      const chatBox = document.getElementById('chat-box');
+      const messageDiv = document.createElement('div');
+      messageDiv.textContent = from + ": " + content;
+      chatBox.appendChild(messageDiv);
+    }
 
-sendbtn.onclick = async () => {
-  const message = userinput.value.trim();
-  if (!message) return;
+    async function sendMessage() {
+      const userInput = document.getElementById('user-input').value;
+      if (!userInput.trim()) return;  // Don't send empty messages
 
-  chatbox.innerHTML += `<div class="user"><b>You:</b> ${message}</div>`;
-  userinput.value = '';
+      appendMessage(userInput, "You");
 
-  const response = await fetch(backendUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: message })
-  });
+      // Send the message to the backend server
+      const response = await fetch('/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: userInput })
+      });
 
-  const data = await response.json();
-  chatbox.innerHTML += `<div class="bot"><b>Bot:</b> ${data.reply}</div>`;
-  chatbox.scrollTop = chatbox.scrollHeight;
-};
-</script>
+      const data = await response.json();
 
+      if (data.reply) {
+        appendMessage(data.reply, "AI");
+      } else if (data.error) {
+        appendMessage("Error: " + data.error, "AI");
+      }
+
+      document.getElementById('user-input').value = ''; // Clear input field
+    }
+  </script>
 </body>
 </html>
