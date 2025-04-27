@@ -1,11 +1,15 @@
 import openai
 import os
 from flask import Flask, request, jsonify, render_template
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 
-# Set the OpenAI API key
-openai.api_key = os.getenv("OPENAI_API_KEY")  # Ensure this is set in your environment
+# Load environment variables
+load_dotenv()
+
+# Initialize the OpenAI client with the new syntax
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 @app.route("/")
@@ -22,19 +26,18 @@ def chat():
         return jsonify({"error": "No message provided"}), 400
 
     try:
-        # Make the API call to OpenAI using the new method for chat-based interactions
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # Or use "gpt-4" if available
+        # Updated API call syntax for v1.0.0+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant."},  # Set system instructions (if any)
-                {"role": "user", "content": user_message}  # User's message
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": user_message}
             ],
-            max_tokens=150  # Limit the length of the response
+            max_tokens=150
         )
 
-        # Extract the assistant's reply from the response
-        bot_reply = response['choices'][0]['message']['content'].strip()
-
+        # Updated response parsing syntax
+        bot_reply = response.choices[0].message.content.strip()
         return jsonify({"reply": bot_reply})
 
     except Exception as e:
