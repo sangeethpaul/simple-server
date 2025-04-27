@@ -8,30 +8,24 @@ app = Flask(__name__)
 # Load environment variables
 load_dotenv()
 
-# Safe API key loading
-gemini_key = os.getenv("GEMINI_API_KEY")
-if not gemini_key:
-    raise ValueError("No GEMINI_API_KEY found in environment variables")
+# Configure Gemini - UPDATED TO CURRENT API
+gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+if not gemini_key or not gemini_key.startswith("AIza"):
+    raise ValueError("Invalid or missing GEMINI_API_KEY")
 
-# Configure Gemini
-genai.configure(
-    api_key=gemini_key,
-    transport="rest",  # Avoids gRPC issues
-    client_options={
-        "api_endpoint": "generativelanguage.googleapis.com"
-    }
-)
+genai.configure(api_key=gemini_key)
 
-# Initialize model
-model = genai.GenerativeModel('gemini-pro')
+# Initialize model - LATEST VERSION
+model = genai.GenerativeModel('gemini-1.5-pro-latest')  # Most current stable model
+
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
+
 @app.route("/chat", methods=["POST"])
 def chat():
-    # CORS headers
     headers = {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*"
@@ -42,14 +36,21 @@ def chat():
         user_message = data.get("message", "").strip()
 
         if not user_message:
-            return jsonify({"error": "No message provided"}), 400, headers
+            return jsonify({"error": "Empty message"}), 400, headers
 
-        # Gemini API call
+        # PROPER GENERATION CONFIG
         response = model.generate_content(
             user_message,
             generation_config={
                 "max_output_tokens": 150,
-                "temperature": 0.7
+                "temperature": 0.7,
+                "top_p": 0.9
+            },
+            safety_settings={
+                "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
+                "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
+                "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_NONE",
+                "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_NONE"
             }
         )
 
@@ -57,6 +58,7 @@ def chat():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500, headers
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
