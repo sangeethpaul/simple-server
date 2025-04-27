@@ -5,12 +5,15 @@ from dotenv import load_dotenv
 
 app = Flask(__name__)
 
+# Load environment variables
+load_dotenv()
+
 # Safe API key loading
 gemini_key = os.getenv("GEMINI_API_KEY")
 if not gemini_key:
     raise ValueError("No GEMINI_API_KEY found in environment variables")
 
-# Configure with explicit settings
+# Configure Gemini
 genai.configure(
     api_key=gemini_key,
     transport="rest",  # Avoids gRPC issues
@@ -19,33 +22,28 @@ genai.configure(
     }
 )
 
+# Initialize model
+model = genai.GenerativeModel('gemini-pro')
+
+@app.route("/")
+def home():
+    return render_template("index.html")
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    # Add CORS headers if needed
+    # CORS headers
     headers = {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*"
     }
 
     try:
-        response = model.generate_content(
-            request.json["message"],
-            generation_config={"max_output_tokens": 150}
-        )
-        return jsonify({"reply": response.text}), 200, headers
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500, headers
+        data = request.get_json()
+        user_message = data.get("message", "").strip()
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.get_json()
-    user_message = data.get("message", "").strip()
+        if not user_message:
+            return jsonify({"error": "No message provided"}), 400, headers
 
-    if not user_message:
-        return jsonify({"error": "No message provided"}), 400
-
-    try:
         # Gemini API call
         response = model.generate_content(
             user_message,
@@ -55,11 +53,10 @@ def chat():
             }
         )
 
-        return jsonify({"reply": response.text})
+        return jsonify({"reply": response.text}), 200, headers
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
+        return jsonify({"error": str(e)}), 500, headers
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
