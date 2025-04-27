@@ -22,17 +22,15 @@ def chat():
         return jsonify({"error": "No message provided"}), 400
 
     try:
-        # Send the user's message to OpenAI's GPT model
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # or use gpt-4 if you have access
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": user_message}
-            ]
+        # Use the new API call for chat models (openai.Completion.create())
+        response = openai.Completion.create(
+            model="gpt-3.5-turbo",  # or "gpt-4" if you have access
+            prompt=user_message,  # Use the user input as a prompt
+            max_tokens=150  # Limit the number of tokens in the response
         )
 
         # Extract the reply from OpenAI's response
-        bot_reply = response['choices'][0]['message']['content']
+        bot_reply = response['choices'][0]['text'].strip()
 
         return jsonify({"reply": bot_reply})
 
