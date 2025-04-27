@@ -1,11 +1,16 @@
-import openai
 import os
+import google.generativeai as genai
 from flask import Flask, request, jsonify, render_template
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 
-# Initialize OpenAI client - will use environment variables from Render
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Load environment variables
+load_dotenv()
+
+# Configure Gemini
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))  # Add this to Render's environment vars
+model = genai.GenerativeModel('gemini-pro')
 
 
 @app.route("/")
@@ -22,15 +27,17 @@ def chat():
         return jsonify({"error": "No message provided"}), 400
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": user_message}
-            ],
-            max_tokens=150
+        # Gemini API call
+        response = model.generate_content(
+            user_message,
+            generation_config={
+                "max_output_tokens": 150,
+                "temperature": 0.7
+            }
         )
-        return jsonify({"reply": response.choices[0].message.content.strip()})
+
+        return jsonify({"reply": response.text})
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
